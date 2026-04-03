@@ -1,25 +1,30 @@
 use std::collections::HashMap;
-use crate::engine;
 use std::fs;
 use serde::{Serialize, Deserialize};
+use crate::engine;
 
 #[derive(Serialize, Deserialize)]
+pub struct Offset {
+    pub position: u64,
+}
+
+#[derive(Serialize, Deserialize, Clone)]
 pub struct Stat {
     pub mean: f32,
     pub std_dev: f32,
 }
 
 #[derive(Serialize, Deserialize)]
-pub struct Config {
-    pub z_threshold: f32,
-    pub burst_threshold: u32,
-    pub window_size: usize,
-}
-
-
-#[derive(Serialize, Deserialize)]
 pub struct Baseline {
     pub stats: HashMap<String, Stat>,
+}
+
+fn get_argus_dir() -> String {
+    let home = std::env::var("HOME")
+        .or_else(|_| std::env::var("USERPROFILE"))
+        .unwrap_or_else(|_| ".".to_string());
+
+    format!("{}/.argus", home)
 }
 
 pub fn save_baseline(freq: &HashMap<String, u32>) {
@@ -30,16 +35,51 @@ pub fn save_baseline(freq: &HashMap<String, u32>) {
     let json = serde_json::to_string_pretty(&baseline)
         .expect("Serialization failed");
 
-    fs::create_dir_all(".analyze").ok();
+    let dir = get_argus_dir();
+    fs::create_dir_all(&dir).ok();
 
-    fs::write(".analyze/baseline.json", json)
+    let path = format!("{}/baseline.json", dir);
+
+    fs::write(path, json)
         .expect("Failed to write baseline");
 }
 
 pub fn load_baseline() -> Baseline {
-    let content = fs::read_to_string(".analyze/baseline.json")
-        .expect("Failed to read baseline");
+    let path = format!("{}/baseline.json", get_argus_dir());
 
-    serde_json::from_str(&content)
-        .expect("Deserialization failed")
+    if let Ok(content) = fs::read_to_string(path) {
+        if let Ok(baseline) = serde_json::from_str(&content) {
+            return baseline;
+        }
+    }
+    Baseline {
+        stats: HashMap::new(),
+    }
+}
+
+pub fn load_offset() -> u64 {
+    let path = format!("{}/offset.json", get_argus_dir());
+
+    if let Ok(data) = fs::read_to_string(path) {
+        if let Ok(offset) = serde_json::from_str::<Offset>(&data) {
+            return offset.position;
+        }
+    }
+
+    0
+}
+
+pub fn save_offset(pos: u64) {
+    let offset = Offset { position: pos };
+
+    let json = serde_json::to_string(&offset)
+        .expect("Offset serialization failed");
+
+    let dir = get_argus_dir();
+    fs::create_dir_all(&dir).ok();
+
+    let path = format!("{}/offset.json", dir);
+
+    fs::write(path, json)
+        .expect("Failed to write offset");
 }

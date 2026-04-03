@@ -1,8 +1,57 @@
 use std::collections::HashMap;
 use crate::storage::{Baseline, Stat};
 pub type TimeBucket = String;
-pub type LogLine = String;
 
+pub fn fuse_signals(
+    novelty: &Vec<String>,
+    deviation: &Vec<String>,
+    statistical: &Vec<String>,
+    bursts: &Vec<String>,
+) -> Vec<Alert> {
+
+    let mut map: HashMap<String, Alert> = HashMap::new();
+
+    // Helper closure
+    let mut add_signal = |pattern: &String, weight: f32, reason: &str| {
+        let entry = map.entry(pattern.clone()).or_insert(Alert {
+            pattern: pattern.clone(),
+            score: 0.0,
+            reasons: vec![],
+        });
+
+        entry.score += weight;
+        entry.reasons.push(reason.to_string());
+    };
+
+    for p in novelty {
+        add_signal(p, 3.0, "novel");
+    }
+
+    for p in deviation {
+        add_signal(p, 2.0, "deviation");
+    }
+
+    for p in statistical {
+        add_signal(p, 2.5, "statistical");
+    }
+
+    for p in bursts {
+        add_signal(p, 2.0, "burst");
+    }
+
+    let mut alerts: Vec<Alert> = map.into_values().collect();
+
+    // Sort by score descending
+    alerts.sort_by(|a, b| b.score.partial_cmp(&a.score).unwrap());
+
+    alerts
+}
+#[derive(Debug)]
+pub struct Alert {
+    pub pattern: String,
+    pub score: f32,
+    pub reasons: Vec<String>,
+}
 pub struct Anomaly {
     pub line: String,
     pub baseline: f32,
@@ -65,20 +114,6 @@ pub fn detect_novelty(
 pub struct TemporalFrequency {
     pub buckets: HashMap<TimeBucket, HashMap<String, u32>>,
 }
-
-impl TemporalFrequency {
-    pub fn new() -> Self {
-        TemporalFrequency {
-            buckets: HashMap::new(),
-        }
-    }
-
-    pub fn add_log(&mut self, bucket: TimeBucket, line: LogLine) {
-        let entry = self.buckets.entry(bucket).or_insert_with(HashMap::new);
-        *entry.entry(line).or_insert(0) += 1;
-    }
-}
-
 
 pub fn build_temporal_frequency(
     logs: &Vec<(String, String)>

@@ -1,7 +1,16 @@
 use std::collections::HashMap;
 use crate::engine::Anomaly;
 use crate::engine::Burst;
+use crate::engine::Alert;
 
+pub fn print_alerts(alerts: &Vec<Alert>) {
+    for alert in alerts {
+        println!(
+            "🚨 {} | score: {:.1} | reasons: {:?}",
+            alert.pattern, alert.score, alert.reasons
+        );
+    }
+}
 pub fn print_summary(freq: &HashMap<String, u32>) {
     println!("Top log patterns:\n");
 
@@ -76,5 +85,31 @@ pub fn print_periodicity(periodic: &Vec<String>) {
         println!("⏱️ {}", line);
     }
 
+    println!();
+}
+
+pub fn print_banner() {
+    let red = "\x1b[38;5;196m";  
+    let dim = "\x1b[2m"; 
+    let bold = "\x1b[1m";        
+    let reset = "\x1b[0m";
+
+    let banner = r#"
+     .---.        █████╗ ██████╗  ██████╗ ██╗   ██╗███████╗
+    /  _  \__    ██╔══██╗██╔══██╗██╔════╝ ██║   ██║██╔════╝
+    | ( )  __\   ███████║██████╔╝██║  ███╗██║   ██║███████╗
+    \  -  /      ██╔══██║██╔══██╗██║   ██║██║   ██║╚════██║
+     \___/___    ██║  ██║██║  ██║╚██████╔╝╚██████╔╝███████║
+      /|   /|    ╚═╝  ╚═╝╚═╝  ╚═╝ ╚═════╝  ╚═════╝ ╚══════╝
+    "#;
+
+    // Printing the banner in bold red
+    println!("{}{}{}", bold, red, banner);
+    
+    // Metadata line with a mix of styles for a professional feel
+    println!(
+        "{}{}{} {}Argus{} {}Log Intelligence Engine Initialized{} {}", 
+        red, bold, reset, bold, reset, dim, reset, reset
+    );
     println!();
 }

@@ -1,24 +1,46 @@
 use std::fs;
+use std::fs::File;
+use std::io::{BufRead, BufReader, Seek, SeekFrom};
 use regex::Regex;
-use chrono::{DateTime, Local};
-
-
-pub fn read_logs(path: &str) -> Vec<String> {
-    let content = fs::read_to_string(path)
-        .expect("Failed to read log file");
-
-    content
-        .lines()
-        .map(|line| normalize(line))
-        .collect()
+pub fn get_file_size(path: &str) -> u64 {
+    fs::metadata(path).map(|m| m.len()).unwrap_or(0)
 }
+
+pub fn read_new_logs(path: &str, offset: u64) -> (Vec<(String, String)>, u64) {
+    let file = File::open(path).expect("Failed to open log file");
+    let mut reader = BufReader::new(file);
+
+    reader.seek(SeekFrom::Start(offset)).unwrap();
+
+    let mut logs = Vec::new();
+    let mut current_pos = offset;
+    let mut line = String::new();
+
+    while reader.read_line(&mut line).unwrap() > 0 {
+        current_pos += line.len() as u64;
+
+        let bucket = extract_time_bucket(&line);
+        let processed = process_line(&line);
+
+        logs.push((bucket, processed));
+
+        line.clear();
+    }
+
+    (logs, current_pos)
+}
+
+pub fn process_line(line: &str) -> String {
+    let normalized = normalize(line);
+    tokenize(&normalized)
+}
+
 pub fn tokenize(line: &str) -> String {
-    let tokens: Vec<String> = line
+    line
         .split_whitespace()
         .map(|token| normalize_token(token))
-        .collect();
-    let key = tokens.join(" ");
-    key
+        .collect::<Vec<_>>()
+        .join(" ")
 }
 
 fn normalize_token(token: &str) -> String {
@@ -28,6 +50,7 @@ fn normalize_token(token: &str) -> String {
         token.to_string()
     }
 }
+
 fn normalize(line: &str) -> String {
     let mut s = line.to_string();
     let re_time = Regex::new(r"\b\d{2}:\d{2}:\d{2}\b").unwrap();
@@ -39,26 +62,12 @@ fn normalize(line: &str) -> String {
     s.split_whitespace().collect::<Vec<_>>().join(" ")
 }
 
-pub fn read_logs_with_time(path: &str) -> Vec<(String, String)> {
-    let content = fs::read_to_string(path)
-        .expect("Failed to read log file");
-
-    content
-        .lines()
-        .map(|line| {
-            let bucket = extract_time_bucket(line);
-            let normalized = normalize(line);
-            (bucket, normalized)
-        })
-        .collect()
-}
-
-fn extract_time_bucket(line: &str) -> String {
+pub fn extract_time_bucket(line: &str) -> String {
     let re = Regex::new(r"\b\d{2}:\d{2}:\d{2}\b").unwrap();
 
     if let Some(mat) = re.find(line) {
         let time = mat.as_str();
-        return time[0..5].to_string();
+        return time[0..5].to_string(); 
     }
 
     "unknown".to_string()
