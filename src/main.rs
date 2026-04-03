@@ -11,7 +11,9 @@ use crate::engine::{
     detect_bursts,
     detect_periodicity,
     detect_stat_anomaly,
+    build_adaptive_baseline, 
 };
+use crate::storage::save_adaptive_baseline; 
 
 fn main() {
     let args: Vec<String> = env::args().collect();
@@ -25,6 +27,25 @@ fn main() {
     match command.as_str() {
         "enable" => shell::enable(),
         "disable" => shell::disable(),
+        "tune" => {
+                if args.len() < 3 {
+                    eprintln!("Usage: argus tune <level>");
+                    return;
+                }
+                let level: f32 = args[2].parse().expect("Invalid sensitivity level. Please provide a number.");
+                storage::update_config_sensitivity(level);
+                println!("✅ Target sensitivity multiplier set to {}x", level);
+            },
+        "explain" => {
+            let index: usize = args[2].parse().unwrap_or(0);
+            let alerts = storage::load_latest_alerts(); // New storage function required
+        
+                if index > 0 && index <= alerts.len() {
+                    renderer::print_explanation(&alerts[index - 1]);
+                } else {
+                    eprintln!("Invalid alert ID.");
+                }
+            },
         "learn" => {
             renderer::print_banner();
 
@@ -73,15 +94,17 @@ fn main() {
             let statistical_patterns: Vec<String> = statistical.iter().map(|a| a.line.clone()).collect();
             let burst_patterns: Vec<String> = bursts.iter().map(|b| b.line.clone()).collect();
 
+            let sensitivity_multiplier = storage::load_config_sensitivity();
+
             let alerts = engine::fuse_signals(
                 &novel,
                 &deviation_patterns,
                 &statistical_patterns,
                 &burst_patterns,
+                sensitivity_multiplier,
                 );
 
             storage::save_offset(new_offset);
-            // Print individual detection results
             renderer::print_novelty(&novel);
             renderer::print_anomalies(&deviation);
             renderer::print_anomalies(&statistical);

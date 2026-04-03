@@ -15,15 +15,17 @@ pub fn read_new_logs(path: &str, offset: u64) -> (Vec<(String, String)>, u64) {
     let mut logs = Vec::new();
     let mut current_pos = offset;
     let mut line = String::new();
-
+    let mut line_count = 0;
+    let sample_rate = 0.1;
     while reader.read_line(&mut line).unwrap() > 0 {
         current_pos += line.len() as u64;
-
-        let bucket = extract_time_bucket(&line);
-        let processed = process_line(&line);
-
-        logs.push((bucket, processed));
-
+        line_count += 1;
+        if (line_count as f32 * sample_rate).fract() < sample_rate {
+            let bucket = extract_time_bucket(&line);
+            let processed = process_line(&line);
+            logs.push((bucket, processed));
+        }
+        current_pos += line.len() as u64;
         line.clear();
     }
 

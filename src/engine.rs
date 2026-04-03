@@ -1,5 +1,5 @@
 use std::collections::HashMap;
-use crate::storage::{Baseline, Stat};
+use crate::storage::{Baseline, Stat, AdaptiveBaseline};
 pub type TimeBucket = String;
 
 pub fn fuse_signals(
@@ -7,6 +7,7 @@ pub fn fuse_signals(
     deviation: &Vec<String>,
     statistical: &Vec<String>,
     bursts: &Vec<String>,
+    sensitivity_multiplier: f32,
 ) -> Vec<Alert> {
 
     let mut map: HashMap<String, Alert> = HashMap::new();
@@ -19,7 +20,7 @@ pub fn fuse_signals(
             reasons: vec![],
         });
 
-        entry.score += weight;
+        entry.score += calculate_adaptive_score(weight, sensitivity_multiplier);
         entry.reasons.push(reason.to_string());
     };
 
@@ -46,7 +47,7 @@ pub fn fuse_signals(
 
     alerts
 }
-#[derive(Debug)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct Alert {
     pub pattern: String,
     pub score: f32,
@@ -96,6 +97,21 @@ pub fn detect_deviation(
     anomalies
 }
 
+pub fn build_adaptive_baseline(temporal_freq: &TemporalFrequency) -> AdaptiveBaseline {
+    let mut windows = HashMap::new();
+
+    for (bucket, freq_map) in &temporal_freq.buckets {
+        let mut bucket_stats = HashMap::new();
+        for (line, &count) in freq_map {
+            bucket_stats.insert(line.clone(), Stat { mean: count as f32, std_dev: 0.0 });
+        }
+        windows.insert(bucket.clone(), bucket_stats);
+    }
+
+    AdaptiveBaseline { windows }
+}
+
+
 pub fn detect_novelty(
     baseline: &Baseline,
     current: &HashMap<String, u32>,
@@ -113,6 +129,10 @@ pub fn detect_novelty(
 
 pub struct TemporalFrequency {
     pub buckets: HashMap<TimeBucket, HashMap<String, u32>>,
+}
+
+pub fn calculate_adaptive_score(base_score: f32, multiplier: f32) -> f32 {
+    base_score * multiplier
 }
 
 pub fn build_temporal_frequency(
@@ -186,9 +206,11 @@ pub fn detect_periodicity(
 
 pub fn build_frequency(logs: &Vec<String>) -> HashMap<String, u32> {
     let mut freq = HashMap::new();
+    let sample_rate = 0.1;
+    let weight = (1.0 / sample_rate) as u32;
 
     for line in logs {
-        *freq.entry(line.clone()).or_insert(0) += 1;
+        *freq.entry(line.clone()).or_insert(0) += weight;
     }
 
     freq

@@ -4,13 +4,21 @@ use crate::engine::Burst;
 use crate::engine::Alert;
 
 pub fn print_alerts(alerts: &Vec<Alert>) {
-    for alert in alerts {
+    for (idx, alert) in alerts.iter().enumerate() {
         println!(
-            "🚨 {} | score: {:.1} | reasons: {:?}",
-            alert.pattern, alert.score, alert.reasons
+            "🚨 #{} | score: {:.1} | reasons: {:?}\n   Pattern: {}",
+            idx + 1, alert.score, alert.reasons, alert.pattern
         );
     }
 }
+
+pub fn print_explanation(alert: &Alert) {
+    println!("\n🔍 Alert Deep Dive:");
+    println!("Pattern:  {}", alert.pattern);
+    println!("Reasons:  {:?}", alert.reasons);
+    println!("Score:    {}", alert.score);
+}
+
 pub fn print_summary(freq: &HashMap<String, u32>) {
     println!("Top log patterns:\n");
 

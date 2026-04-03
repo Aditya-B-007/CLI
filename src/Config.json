@@ -1,5 +1,9 @@
 {
   "z_threshold": 3.0,
   "burst_threshold": 10,
-  "window_size": 50
+  "window_size": 50,
+  "pressure_threshold": 5000,
+  "default_sampling_rate": 0.1,
+  "sensitivity_multiplier": 1.0, 
+  "adaptive_mode": true
 }
