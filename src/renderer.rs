@@ -4,11 +4,7 @@ use crate::engine::Burst;
 use crate::engine::Alert;
 
 pub fn print_alerts(alerts: &Vec<Alert>) {
-    if alerts.is_empty() {
-        println!("No alerts detected.");
-        return;
-    }
-
+    if alerts.is_empty() { return; }
     println!("🚨 Detected alerts:\n");
     for alert in alerts {
         println!(
@@ -41,11 +37,11 @@ pub fn print_anomalies(anomalies: &Vec<Anomaly>) {
 
     for a in anomalies {
         println!(
-            "⚠️ [{} → {}] ({:.2}x)\n{}",
+            "⚠️ {} [{} → {}] ({:.2}x)",
+            a.line,
             a.baseline,
             a.current,
             a.ratio,
-            a.line
         );
     }
 }
