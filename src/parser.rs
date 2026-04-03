@@ -9,21 +9,17 @@ pub fn get_file_size(path: &str) -> u64 {
 pub fn read_new_logs(path: &str, offset: u64) -> (Vec<(String, String)>, u64) {
     let file = File::open(path).expect("Failed to open log file");
     let mut reader = BufReader::new(file);
-
     reader.seek(SeekFrom::Start(offset)).unwrap();
 
     let mut logs = Vec::new();
     let mut current_pos = offset;
     let mut line = String::new();
-
-    while reader.read_line(&mut line).unwrap() > 0 {
-        current_pos += line.len() as u64;
-
+    while let Ok(bytes_read) = reader.read_line(&mut line) {
+        if bytes_read == 0 { break; }
+        current_pos += bytes_read as u64;
         let bucket = extract_time_bucket(&line);
         let processed = process_line(&line);
-
         logs.push((bucket, processed));
-
         line.clear();
     }
 

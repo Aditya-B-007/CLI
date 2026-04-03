@@ -27,6 +27,23 @@ fn get_argus_dir() -> String {
     format!("{}/.argus", home)
 }
 
+
+pub fn load_config() -> serde_json::Value {
+    let path = format!("{}/Config.json", get_argus_dir());
+
+    if let Ok(content) = fs::read_to_string(path) {
+        if let Ok(config) = serde_json::from_str(&content) {
+            return config;
+        }
+    }
+
+    serde_json::json!({
+        "z_threshold": 3.0,
+        "burst_threshold": 10
+    })
+}
+
+
 pub fn save_baseline(freq: &HashMap<String, u32>) {
     let baseline = Baseline {
         stats: engine::build_stats(freq),

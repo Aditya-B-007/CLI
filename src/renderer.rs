@@ -55,6 +55,7 @@ pub fn print_novelty(novel: &Vec<String>) {
     }
 
     println!();
+    println!("────────────────────────────────────────────────────────\n");
 }
 
 pub fn print_bursts(bursts: &Vec<Burst>) {
