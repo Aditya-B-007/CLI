@@ -1,15 +1,30 @@
 use std::collections::HashMap;
+use crate::engine;
 use std::fs;
 use serde::{Serialize, Deserialize};
 
 #[derive(Serialize, Deserialize)]
+pub struct Stat {
+    pub mean: f32,
+    pub std_dev: f32,
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct Config {
+    pub z_threshold: f32,
+    pub burst_threshold: u32,
+    pub window_size: usize,
+}
+
+
+#[derive(Serialize, Deserialize)]
 pub struct Baseline {
-    pub frequencies: HashMap<String, u32>,
+    pub stats: HashMap<String, Stat>,
 }
 
 pub fn save_baseline(freq: &HashMap<String, u32>) {
     let baseline = Baseline {
-        frequencies: freq.clone(),
+        stats: engine::build_stats(freq),
     };
 
     let json = serde_json::to_string_pretty(&baseline)

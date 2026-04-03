@@ -44,5 +44,8 @@ fn main() {
     renderer::print_bursts(&bursts);
     renderer::print_periodicity(&periodic);
 }
-}
+    _ => {
+        eprintln!("Unknown command: {}. Use 'learn' or 'check'.", command);
+    }
+    }
 }

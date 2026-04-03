@@ -1,15 +1,25 @@
 use std::collections::HashMap;
-use crate::storage::Baseline;
+use crate::storage::{Baseline, Stat};
 pub type TimeBucket = String;
 pub type LogLine = String;
 
 pub struct Anomaly {
     pub line: String,
-    pub baseline: u32,
+    pub baseline: f32,
     pub current: u32,
     pub ratio: f32,
 }
+pub fn build_stats(freq: &HashMap<String, u32>) -> HashMap<String, Stat> {
+    let mut stats = HashMap::new();
 
+    for (line, &count) in freq.iter() {
+        let mean = count as f32; 
+        let std_dev = 0.0; 
+        stats.insert(line.clone(), Stat { mean, std_dev });
+    }
+
+    stats
+}
 pub fn detect_deviation(
     baseline: &Baseline,
     current: &HashMap<String, u32>,
@@ -18,16 +28,16 @@ pub fn detect_deviation(
     let mut anomalies = Vec::new();
 
     for (line, &curr_count) in current.iter() {
-        let base_count = baseline.frequencies.get(line).cloned().unwrap_or(0);
-        let ratio = if base_count == 0 {
+        let base_count = baseline.stats.get(line).cloned().unwrap_or(Stat { mean: 0.0, std_dev: 0.0 });
+        let ratio = if base_count.mean == 0.0 {
             curr_count as f32
         } else {
-            curr_count as f32 / base_count as f32
+            curr_count as f32 / base_count.mean
         };
         if ratio > 3.0 && curr_count > 5 {
             anomalies.push(Anomaly {
                 line: line.clone(),
-                baseline: base_count,
+                baseline: base_count.mean,
                 current: curr_count,
                 ratio,
             });
@@ -44,7 +54,7 @@ pub fn detect_novelty(
     let mut novel = Vec::new();
 
     for (line, _) in current.iter() {
-        if !baseline.frequencies.contains_key(line) {
+        if !baseline.stats.contains_key(line) {
             novel.push(line.clone());
         }
     }
@@ -136,6 +146,40 @@ pub fn detect_periodicity(
             periodic.push(line);
         }
     }
-
     periodic
-}//-->Naive, not good!!!
+}
+
+pub fn build_frequency(logs: &Vec<String>) -> HashMap<String, u32> {
+    let mut freq = HashMap::new();
+
+    for line in logs {
+        *freq.entry(line.clone()).or_insert(0) += 1;
+    }
+
+    freq
+}
+
+pub fn detect_stat_anomaly(
+    baseline: &Baseline,
+    current: &HashMap<String, u32>,
+) -> Vec<Anomaly> {
+
+    let mut anomalies = Vec::new();
+
+    for (line, &curr) in current {
+        if let Some(stat) = baseline.stats.get(line) {
+            let z = (curr as f32 - stat.mean) / stat.std_dev.max(1.0);
+
+            if z > 3.0 {
+                anomalies.push(Anomaly {
+                    line: line.clone(),
+                    baseline: stat.mean,
+                    current: curr,
+                    ratio: z,
+                });
+            }
+        }
+    }
+
+    anomalies
+}

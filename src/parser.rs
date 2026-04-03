@@ -1,7 +1,6 @@
 use std::fs;
 use regex::Regex;
 use chrono::{DateTime, Local};
-use regex::Regex;
 
 
 pub fn read_logs(path: &str) -> Vec<String> {
@@ -13,7 +12,22 @@ pub fn read_logs(path: &str) -> Vec<String> {
         .map(|line| normalize(line))
         .collect()
 }
+pub fn tokenize(line: &str) -> String {
+    let tokens: Vec<String> = line
+        .split_whitespace()
+        .map(|token| normalize_token(token))
+        .collect();
+    let key = tokens.join(" ");
+    key
+}
 
+fn normalize_token(token: &str) -> String {
+    if token.chars().all(|c| c.is_numeric()) {
+        "*".to_string()
+    } else {
+        token.to_string()
+    }
+}
 fn normalize(line: &str) -> String {
     let mut s = line.to_string();
     let re_time = Regex::new(r"\b\d{2}:\d{2}:\d{2}\b").unwrap();
