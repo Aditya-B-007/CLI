@@ -4,12 +4,19 @@ use crate::engine::Burst;
 use crate::engine::Alert;
 
 pub fn print_alerts(alerts: &Vec<Alert>) {
+    if alerts.is_empty() {
+        println!("No alerts detected.");
+        return;
+    }
+
+    println!("🚨 Detected alerts:\n");
     for alert in alerts {
         println!(
             "🚨 {} | score: {:.1} | reasons: {:?}",
             alert.pattern, alert.score, alert.reasons
         );
     }
+    println!(); // Add a newline for better separation
 }
 pub fn print_summary(freq: &HashMap<String, u32>) {
     println!("Top log patterns:\n");
@@ -26,7 +33,7 @@ pub fn print_summary(freq: &HashMap<String, u32>) {
 
 pub fn print_anomalies(anomalies: &Vec<Anomaly>) {
     if anomalies.is_empty() {
-        println!("No anomalies detected.");
+        // If no anomalies, print nothing. The caller (main.rs) should handle a consolidated "No anomalies detected." message if all anomaly types are empty.
         return;
     }
 
@@ -113,4 +120,14 @@ pub fn print_banner() {
         red, bold, reset, bold, reset, dim, reset, reset
     );
     println!();
+}
+
+pub fn print_explanation(alert: &Alert) {
+    println!("\n--- Alert Explanation ---");
+    println!("Pattern: {}", alert.pattern);
+    println!("Score: {:.1}", alert.score);
+    println!("Reasons:");
+    for reason in &alert.reasons {
+        println!("  - {}", reason);
+    }
 }

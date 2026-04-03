@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::fs;
 use serde::{Serialize, Deserialize};
-use crate::engine;
+use crate::engine::{self, Alert};
 
 #[derive(Serialize, Deserialize)]
 pub struct Offset {
@@ -17,6 +17,11 @@ pub struct Stat {
 #[derive(Serialize, Deserialize)]
 pub struct Baseline {
     pub stats: HashMap<String, Stat>,
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct AdaptiveBaseline {
+    pub windows: HashMap<String, HashMap<String, Stat>>,
 }
 
 fn get_argus_dir() -> String {
@@ -39,7 +44,8 @@ pub fn load_config() -> serde_json::Value {
 
     serde_json::json!({
         "z_threshold": 3.0,
-        "burst_threshold": 10
+        "burst_threshold": 10,
+        "sensitivity_multiplier": 1.0
     })
 }
 
@@ -99,4 +105,73 @@ pub fn save_offset(pos: u64) {
 
     fs::write(path, json)
         .expect("Failed to write offset");
+}
+
+pub fn save_latest_alerts(alerts: &Vec<Alert>) {
+    let json = serde_json::to_string_pretty(alerts)
+        .expect("Alerts serialization failed");
+
+    let dir = get_argus_dir();
+    fs::create_dir_all(&dir).ok();
+
+    let path = format!("{}/alerts.json", dir);
+
+    fs::write(path, json)
+        .expect("Failed to write alerts");
+}
+
+pub fn load_latest_alerts() -> Vec<Alert> {
+    let path = format!("{}/alerts.json", get_argus_dir());
+
+    if let Ok(content) = fs::read_to_string(path) {
+        if let Ok(alerts) = serde_json::from_str(&content) {
+            return alerts;
+        }
+    }
+    Vec::new()
+}
+
+pub fn save_adaptive_baseline(adaptive_baseline: &AdaptiveBaseline) {
+    let json = serde_json::to_string_pretty(adaptive_baseline)
+        .expect("Adaptive baseline serialization failed");
+
+    let dir = get_argus_dir();
+    fs::create_dir_all(&dir).ok();
+
+    let path = format!("{}/adaptive_baseline.json", dir);
+
+    fs::write(path, json)
+        .expect("Failed to write adaptive baseline");
+}
+
+pub fn load_adaptive_baseline() -> AdaptiveBaseline {
+    let path = format!("{}/adaptive_baseline.json", get_argus_dir());
+
+    if let Ok(content) = fs::read_to_string(path) {
+        if let Ok(adaptive_baseline) = serde_json::from_str(&content) {
+            return adaptive_baseline;
+        }
+    }
+    AdaptiveBaseline { windows: HashMap::new() }
+}
+
+pub fn load_config_sensitivity() -> f32 {
+    let config = load_config();
+    config["sensitivity_multiplier"].as_f64().unwrap_or(1.0) as f32
+}
+
+pub fn update_config_sensitivity(level: f32) {
+    let mut config = load_config();
+    config["sensitivity_multiplier"] = serde_json::to_value(level).unwrap();
+
+    let dir = get_argus_dir();
+    fs::create_dir_all(&dir).ok();
+
+    let path = format!("{}/Config.json", dir);
+
+    let json = serde_json::to_string_pretty(&config)
+        .expect("Config serialization failed");
+
+    fs::write(path, json)
+        .expect("Failed to write config");
 }

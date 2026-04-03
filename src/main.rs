@@ -104,13 +104,12 @@ fn main() {
                 engine::detect_adaptive_anomaly(&adaptive_baseline, &temporal);
             let adaptive_patterns: Vec<String> =
                 adaptive_anomalies.iter().map(|a| a.line.clone()).collect();
-            let bursts = detect_bursts(&temporal);
             let periodic = detect_periodicity(&temporal);
-
+            let burst_threshold = config["burst_threshold"].as_u64().unwrap_or(10) as u32;
+            let bursts = detect_bursts(&temporal, burst_threshold);
             let deviation_patterns: Vec<String> = deviation.iter().map(|a| a.line.clone()).collect();
             let statistical_patterns: Vec<String> = statistical.iter().map(|a| a.line.clone()).collect();
             let burst_patterns: Vec<String> = bursts.iter().map(|b| b.line.clone()).collect();
-
             let sensitivity_multiplier = storage::load_config_sensitivity();
 
             let alerts = engine::fuse_signals(

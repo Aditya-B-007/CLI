@@ -162,14 +162,15 @@ pub struct Burst {
 }
 
 pub fn detect_bursts(
-    temporal: &TemporalFrequency
+    temporal: &TemporalFrequency,
+    burst_threshold: u32
 ) -> Vec<Burst> {
 
     let mut bursts = Vec::new();
 
     for (bucket, freq_map) in &temporal.buckets {
         for (line, &count) in freq_map {
-            if count > 10 { 
+            if count > burst_threshold { 
                 bursts.push(Burst {
                     bucket: bucket.clone(),
                     line: line.clone(),
