@@ -2,7 +2,29 @@ use std::collections::HashMap;
 use crate::engine::Anomaly;
 use crate::engine::Burst;
 use crate::engine::Alert;
+use std::{thread, time};
 
+pub fn render_stream(cmd: &str, alert: Option<Alert>) {
+    match alert {
+        Some(a) => {
+            println!("🚨 {} | score: {:.2} | {:?}", cmd, a.score, a.reasons);
+        }
+        None => {
+            println!("✔ {}", cmd);
+        }
+    }
+}
+pub fn animate_line() {
+    let frames = vec!["⠁", "⠂", "⠄", "⠂"];
+
+    for frame in frames {
+        print!("\r{} Analyzing...", frame);
+        std::io::Write::flush(&mut std::io::stdout()).unwrap();
+        thread::sleep(time::Duration::from_millis(200));
+    }
+
+    println!("\r✅ Done           ");
+}
 pub fn print_alerts(alerts: &Vec<Alert>) {
     if alerts.is_empty() { return; }
     println!("🚨 Detected alerts:\n");
@@ -45,6 +67,7 @@ pub fn print_anomalies(anomalies: &Vec<Anomaly>) {
         );
     }
 }
+
 
 pub fn print_novelty(novel: &Vec<String>) {
     if novel.is_empty() {

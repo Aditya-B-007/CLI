@@ -4,14 +4,16 @@ mod storage;
 mod renderer;
 mod shell;
 
-use std::env;
+use std::{env};
+use std::fs::OpenOptions;
+use std::io::{BufRead, BufReader};
 
 use crate::engine::{
     build_temporal_frequency,
     detect_bursts,
     detect_periodicity,
     detect_stat_anomaly,
-};
+};  
 
 fn main() {
     let args: Vec<String> = env::args().collect();
@@ -49,19 +51,96 @@ fn main() {
 
             let (logs_with_time, _) = parser::read_new_logs(&args[2], 0);
             let logs: Vec<String> = logs_with_time
-                .iter() // Changed from into_iter to iter so we can borrow for both
+                .iter() 
                 .map(|(_, line)| line.clone())
                 .collect();
     
-            let freq = engine::build_frequency(&logs, 1.0); // We'll update this function next
+            let freq = engine::build_frequency(&logs, 1.0); 
             storage::save_baseline(&freq);
-
-    // ADD THESE LINES to build and save the Adaptive Baseline (Feature 3)
             let temporal_freq = engine::build_temporal_frequency(&logs_with_time);
             let adaptive_baseline = engine::build_adaptive_baseline(&temporal_freq);
             storage::save_adaptive_baseline(&adaptive_baseline);
 
             renderer::print_summary(&freq);
+        }
+        "daemon" => {
+            use std::io::{self, BufRead};
+
+            println!("🚀 Argus daemon started");
+
+            let stdin = io::stdin();
+
+            let baseline = storage::load_baseline();
+            let mut state = engine::EngineState::new();
+
+            for line in stdin.lock().lines() {
+                let cmd = line.unwrap();
+
+                let alert = engine::analyze_realtime_stat(
+                    &cmd,
+                    &mut state,
+                    &baseline,
+                );
+
+                renderer::render_stream(&cmd, alert);
+            }
+        }
+        
+        "stream" => {
+            use std::io::{self, BufRead};
+
+            println!("📡 Argus live mode started");
+
+            let stdin = io::stdin();
+
+            let baseline = storage::load_baseline();
+            let mut state = engine::EngineState::new();
+
+            for line in stdin.lock().lines() {
+                let cmd = line.unwrap();
+
+                let alert = engine::analyze_realtime_stat(
+                    &cmd,
+                    &mut state,
+                    &baseline,
+                );
+
+                renderer::render_stream(&cmd, alert);
+            }
+        }
+        "pipe-listen" => {
+            println!("👂 Argus listening on named pipe: \\\\.\\pipe\\argus");
+
+            let baseline = storage::load_baseline();
+            let mut state = engine::EngineState::new();
+            let pipe_path = r"\\.\pipe\argus";
+
+            loop {
+                let file = OpenOptions::new().read(true).open(pipe_path);
+
+                if let Ok(f) = file {
+                    println!("🔗 Client connected to pipe.");
+                    let reader = BufReader::new(f);
+
+                    for line_result in reader.lines() {
+                        match line_result {
+                            Ok(cmd) => {
+                                let alert = engine::analyze_realtime_stat(&cmd, &mut state, &baseline);
+                                renderer::render_stream(&cmd, alert);
+                            },
+                            Err(e) => {
+                                eprintln!("Error reading from pipe: {}", e);
+                                break; // Break from inner loop to re-attempt pipe connection
+                            }
+                        }
+                    }
+                    println!("🔌 Client disconnected from pipe.");
+                } else {
+                    eprintln!("Error opening named pipe (will retry): {:?}", file.err());
+                    // Small delay before retrying to avoid busy-waiting
+                    std::thread::sleep(std::time::Duration::from_secs(1));
+                }
+            }
         }
         "check" => {
             let log_path = &args[2];
@@ -129,10 +208,10 @@ fn main() {
             renderer::print_alerts(&alerts);
             renderer::print_periodicity(&periodic);
             }
-            "banner" => renderer::print_banner(),
+        "banner" => renderer::print_banner(),
 
-            _ => {
-                eprintln!("Unknown command");
-            }
+        _ => {
+            eprintln!("Unknown command");
         }
     }
+}

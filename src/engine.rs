@@ -2,6 +2,17 @@ use std::collections::HashMap;
 use crate::storage::{Baseline, Stat, AdaptiveBaseline};
 pub type TimeBucket = String;
 
+pub struct EngineState {
+    pub freq: HashMap<String, u32>,
+}
+
+impl EngineState {
+    pub fn new() -> Self {
+        Self {
+            freq: HashMap::new(),
+        }
+    }
+}
 pub fn fuse_signals(
     novelty: &Vec<String>,
     deviation: &Vec<String>,
@@ -160,6 +171,32 @@ pub struct Burst {
     pub line: String,
     pub count: u32,
 }
+pub fn analyze_realtime_stat(
+    cmd: &str,
+    state: &mut EngineState,
+    baseline: &Baseline,
+) -> Option<Alert> {
+    *state.freq.entry(cmd.to_string()).or_insert(0) += 1;
+    let current = &state.freq;
+    let deviation = detect_deviation(baseline, &current, 3.0);
+    let statistical = detect_stat_anomaly(baseline, &current);
+
+    let deviation_patterns: Vec<String> =
+        deviation.iter().map(|a| a.line.clone()).collect();
+
+    let statistical_patterns: Vec<String> =
+        statistical.iter().map(|a| a.line.clone()).collect();
+
+    let alerts = fuse_signals(
+        &vec![],
+        &deviation_patterns,
+        &statistical_patterns,
+        &vec![],
+        &vec![],
+        1.0,
+    );
+    alerts.into_iter().find(|a| a.pattern == cmd)
+}   
 
 pub fn detect_bursts(
     temporal: &TemporalFrequency,
