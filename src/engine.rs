@@ -1,15 +1,55 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, VecDeque};
 use crate::storage::{Baseline, Stat, AdaptiveBaseline};
 pub type TimeBucket = String;
+#[derive(Clone)]
+pub struct RunningStat {
+    pub count: u32,
+    pub mean: f32,
+    pub m2: f32, 
+}
+
+impl RunningStat {
+    pub fn new() -> Self {
+        Self {
+            count: 0,
+            mean: 0.0,
+            m2: 0.0,
+        }
+    }
+
+    pub fn update(&mut self, value: f32) {
+        self.count += 1;
+
+        let delta = value - self.mean;
+        self.mean += delta / self.count as f32;
+
+        let delta2 = value - self.mean;
+        self.m2 += delta * delta2;
+    }
+
+    pub fn std_dev(&self) -> f32 {
+        if self.count < 2 {
+            1.0 // avoid division by zero
+        } else {
+            (self.m2 / self.count as f32).sqrt()
+        }
+    }
+}
 
 pub struct EngineState {
-    pub freq: HashMap<String, u32>,
+    pub stats: HashMap<String, RunningStat>,
+    pub history: VecDeque<String>,
+    pub sequence_freq: HashMap<(String, String), u32>,
+    pub seen_commands: HashMap<String, u32>,
 }
 
 impl EngineState {
     pub fn new() -> Self {
         Self {
-            freq: HashMap::new(),
+            stats: HashMap::new(),
+            history: VecDeque::new(),
+            sequence_freq: HashMap::new(),
+            seen_commands: HashMap::new(),
         }
     }
 }
@@ -171,31 +211,39 @@ pub struct Burst {
     pub line: String,
     pub count: u32,
 }
+
+
 pub fn analyze_realtime_stat(
     cmd: &str,
     state: &mut EngineState,
     baseline: &Baseline,
 ) -> Option<Alert> {
-    *state.freq.entry(cmd.to_string()).or_insert(0) += 1;
-    let current = &state.freq;
-    let deviation = detect_deviation(baseline, &current, 3.0);
-    let statistical = detect_stat_anomaly(baseline, &current);
+    state.history.push_back(cmd.to_string());
 
-    let deviation_patterns: Vec<String> =
-        deviation.iter().map(|a| a.line.clone()).collect();
+    if state.history.len() > 50 {
+        state.history.pop_front();
+    }
 
-    let statistical_patterns: Vec<String> =
-        statistical.iter().map(|a| a.line.clone()).collect();
 
-    let alerts = fuse_signals(
-        &vec![],
-        &deviation_patterns,
-        &statistical_patterns,
-        &vec![],
-        &vec![],
-        1.0,
-    );
-    alerts.into_iter().find(|a| a.pattern == cmd)
+    let entry = state
+        .stats
+        .entry(cmd.to_string())
+        .or_insert(RunningStat::new());
+    entry.update(1.0);
+
+    let mean = entry.mean;
+    let std_dev = entry.std_dev();
+
+    let z_score = (1.0 - mean) / std_dev;
+    if z_score.abs() > 3.0 && entry.count > 5 {
+        return Some(Alert {
+            pattern: cmd.to_string(),
+            score: z_score.abs(),
+            reasons: vec!["statistical".to_string()],
+        });
+    }
+
+    None
 }   
 
 pub fn detect_bursts(
