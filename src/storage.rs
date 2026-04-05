@@ -24,17 +24,17 @@ pub struct AdaptiveBaseline {
     pub windows: HashMap<String, HashMap<String, Stat>>,
 }
 
-fn get_argus_dir() -> String {
+fn get_kautliya_dir() -> String {
     let home = std::env::var("HOME")
         .or_else(|_| std::env::var("USERPROFILE"))
         .unwrap_or_else(|_| ".".to_string());
 
-    format!("{}/.argus", home)
+    format!("{}/.kautliya", home)
 }
 
 
 pub fn load_config() -> serde_json::Value {
-    let path = format!("{}/Config.json", get_argus_dir());
+    let path = format!("{}/Config.json", get_kautliya_dir());
 
     if let Ok(content) = fs::read_to_string(path) {
         if let Ok(config) = serde_json::from_str(&content) {
@@ -58,7 +58,7 @@ pub fn save_baseline(freq: &HashMap<String, u32>) {
     let json = serde_json::to_string_pretty(&baseline)
         .expect("Serialization failed");
 
-    let dir = get_argus_dir();
+    let dir = get_kautliya_dir();
     fs::create_dir_all(&dir).ok();
 
     let path = format!("{}/baseline.json", dir);
@@ -68,7 +68,7 @@ pub fn save_baseline(freq: &HashMap<String, u32>) {
 }
 
 pub fn load_baseline() -> Baseline {
-    let path = format!("{}/baseline.json", get_argus_dir());
+    let path = format!("{}/baseline.json", get_kautliya_dir());
 
     if let Ok(content) = fs::read_to_string(path) {
         if let Ok(baseline) = serde_json::from_str(&content) {
@@ -81,7 +81,7 @@ pub fn load_baseline() -> Baseline {
 }
 
 pub fn load_offset() -> u64 {
-    let path = format!("{}/offset.json", get_argus_dir());
+    let path = format!("{}/offset.json", get_kautliya_dir());
 
     if let Ok(data) = fs::read_to_string(path) {
         if let Ok(offset) = serde_json::from_str::<Offset>(&data) {
@@ -98,7 +98,7 @@ pub fn save_offset(pos: u64) {
     let json = serde_json::to_string(&offset)
         .expect("Offset serialization failed");
 
-    let dir = get_argus_dir();
+    let dir = get_kautliya_dir();
     fs::create_dir_all(&dir).ok();
 
     let path = format!("{}/offset.json", dir);
@@ -111,7 +111,7 @@ pub fn save_latest_alerts(alerts: &Vec<Alert>) {
     let json = serde_json::to_string_pretty(alerts)
         .expect("Alerts serialization failed");
 
-    let dir = get_argus_dir();
+    let dir = get_kautliya_dir();
     fs::create_dir_all(&dir).ok();
 
     let path = format!("{}/alerts.json", dir);
@@ -121,7 +121,7 @@ pub fn save_latest_alerts(alerts: &Vec<Alert>) {
 }
 
 pub fn load_latest_alerts() -> Vec<Alert> {
-    let path = format!("{}/alerts.json", get_argus_dir());
+    let path = format!("{}/alerts.json", get_kautliya_dir());
 
     if let Ok(content) = fs::read_to_string(path) {
         if let Ok(alerts) = serde_json::from_str(&content) {
@@ -135,7 +135,7 @@ pub fn save_adaptive_baseline(adaptive_baseline: &AdaptiveBaseline) {
     let json = serde_json::to_string_pretty(adaptive_baseline)
         .expect("Adaptive baseline serialization failed");
 
-    let dir = get_argus_dir();
+    let dir = get_kautliya_dir();
     fs::create_dir_all(&dir).ok();
 
     let path = format!("{}/adaptive_baseline.json", dir);
@@ -145,7 +145,7 @@ pub fn save_adaptive_baseline(adaptive_baseline: &AdaptiveBaseline) {
 }
 
 pub fn load_adaptive_baseline() -> AdaptiveBaseline {
-    let path = format!("{}/adaptive_baseline.json", get_argus_dir());
+    let path = format!("{}/adaptive_baseline.json", get_kautliya_dir());
 
     if let Ok(content) = fs::read_to_string(path) {
         if let Ok(adaptive_baseline) = serde_json::from_str(&content) {
@@ -164,7 +164,7 @@ pub fn update_config_sensitivity(level: f32) {
     let mut config = load_config();
     config["sensitivity_multiplier"] = serde_json::to_value(level).unwrap();
 
-    let dir = get_argus_dir();
+    let dir = get_kautliya_dir();
     fs::create_dir_all(&dir).ok();
 
     let path = format!("{}/Config.json", dir);

@@ -116,27 +116,23 @@ pub fn print_periodicity(periodic: &Vec<String>) {
 }
 
 pub fn print_banner() {
-    let red = "\x1b[38;5;196m";  
+    let saffron = "\x1b[38;5;208m";
     let dim = "\x1b[2m"; 
     let bold = "\x1b[1m";        
     let reset = "\x1b[0m";
-
     let banner = r#"
-     .---.        █████╗ ██████╗  ██████╗ ██╗   ██╗███████╗
-    /  _  \__    ██╔══██╗██╔══██╗██╔════╝ ██║   ██║██╔════╝
-    | ( )  __\   ███████║██████╔╝██║  ███╗██║   ██║███████╗
-    \  -  /      ██╔══██║██╔══██╗██║   ██║██║   ██║╚════██║
-     \___/___    ██║  ██║██║  ██║╚██████╔╝╚██████╔╝███████║
-      /|   /|    ╚═╝  ╚═╝╚═╝  ╚═╝ ╚═════╝  ╚═════╝ ╚══════╝
+      ___          _  __   _   _   _  _____  ___  _      __   __  _    
+     / _ \  _ _   | |/ /  /_\ | | | ||_   _||_ _|| |     \ \ / / /_\   
+    | (_) |(_|_)  | ' <  / _ \| |_| |  | |   | | | |__    \ V / / _ \  
+     \___/ / /    |_|\_\/_/ \_\\___/   |_|  |___||____|    |_| /_/ \_\ 
+      | | / /     
+      |_|/_/      
     "#;
 
-    // Printing the banner in bold red
-    println!("{}{}{}", bold, red, banner);
-    
-    // Metadata line with a mix of styles for a professional feel
+    println!("{}{}{}", bold, saffron, banner);
     println!(
-        "{}{}{} {}Argus{} {}Log Intelligence Engine Initialized{} {}", 
-        red, bold, reset, bold, reset, dim, reset, reset
+        "{}{}{} {}Kautilya{} {}Strategic Intelligence System Online{} {}", 
+        saffron, bold, reset, bold, reset, dim, reset, reset
     );
     println!();
 }

@@ -2,8 +2,8 @@ use std::env;
 use std::fs;
 use std::path::Path;
 
-const START: &str = "# >>> argus hook >>>";
-const END: &str = "# <<< argus hook <<<";
+const START: &str = "# >>> kautliya hook >>>";
+const END: &str = "# <<< kautliya hook <<<";
 
 pub fn enable() {
     let rc_path = get_rc_path();
@@ -12,12 +12,12 @@ pub fn enable() {
         fs::read_to_string(&rc_path).unwrap_or_default()
     } else {
         // Minimal safe default
-        String::from("# Argus generated shell config\n")
+        String::from("# kautliya generated shell config\n")
     };
 
     // Prevent duplication
     if content.contains(START) {
-        println!("Argus already enabled.");
+        println!("kautliya already enabled.");
         return;
     }
 
@@ -28,7 +28,7 @@ pub fn enable() {
 
     fs::write(&rc_path, content).expect("Failed to write rc file");
 
-    println!("Argus enabled.");
+    println!("kautliya enabled.");
     println!("Run: source {}", rc_path);
 }
 
@@ -46,7 +46,7 @@ pub fn disable() {
 
     fs::write(&rc_path, cleaned).expect("Failed to update rc file");
 
-    println!("Argus disabled.");
+    println!("kautliya disabled.");
 }
 
 fn get_rc_path() -> String {
@@ -85,35 +85,35 @@ fn build_hook() -> String {
     format!(
 r#"{start}
 
-ARGUS_BIN="argus"
-ARGUS_LOGS="$HOME/.argus/logs.txt"
+kautliya_BIN="kautliya"
+kautliya_LOGS="$HOME/.kautliya/logs.txt"
 
-_argus_init() {{
-    if [ -z "$ARGUS_INITIALIZED" ]; then
-        $ARGUS_BIN banner
-        export ARGUS_INITIALIZED=1
+_kautliya_init() {{
+    if [ -z "$kautliya_INITIALIZED" ]; then
+        $kautliya_BIN banner
+        export kautliya_INITIALIZED=1
     fi
 }}
 
-_argus_run() {{
-    if [ -n "$ARGUS_RUNNING" ]; then
+_kautliya_run() {{
+    if [ -n "$kautliya_RUNNING" ]; then
         return
     fi
 
-    export ARGUS_RUNNING=1
+    export kautliya_RUNNING=1
 
-    if [ -f "$ARGUS_LOGS" ]; then
-        $ARGUS_BIN check "$ARGUS_LOGS"
-    fi
+    cmd=$(history 1 | sed 's/^ *[0-9]* *//')
 
-    unset ARGUS_RUNNING
+    echo "$cmd" | nc 127.0.0.1 7878
+
+    unset kautliya_RUNNING
 }}
 
 if [ -n "$ZSH_VERSION" ]; then
-    precmd_functions+=(_argus_init)
-    precmd_functions+=(_argus_run)
+    precmd_functions+=(_kautliya_init)
+    precmd_functions+=(_kautliya_run)
 elif [ -n "$BASH_VERSION" ]; then
-    PROMPT_COMMAND="_argus_init; _argus_run"
+    PROMPT_COMMAND="_kautliya_init; _kautliya_run"
 fi
 
 {end}

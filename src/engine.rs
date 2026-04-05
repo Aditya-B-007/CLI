@@ -41,6 +41,7 @@ pub struct EngineState {
     pub history: VecDeque<String>,
     pub sequence_freq: HashMap<(String, String), u32>,
     pub seen_commands: HashMap<String, u32>,
+    pub timestamps: VecDeque<std::time::Instant>, 
 }
 
 impl EngineState {
@@ -50,6 +51,7 @@ impl EngineState {
             history: VecDeque::new(),
             sequence_freq: HashMap::new(),
             seen_commands: HashMap::new(),
+            timestamps: VecDeque::new(),
         }
     }
 }
@@ -218,33 +220,98 @@ pub fn analyze_realtime_stat(
     state: &mut EngineState,
     baseline: &Baseline,
 ) -> Option<Alert> {
-    state.history.push_back(cmd.to_string());
+    use std::time::Instant;
+    let now = Instant::now();
+    state.timestamps.push_back(now);
+    if state.timestamps.len() > 50 {
+        state.timestamps.pop_front();
+    }
+    let cmd = crate::parser::process_line(cmd);
+    state.history.push_back(cmd.clone());
 
     if state.history.len() > 50 {
         state.history.pop_front();
     }
-
+    *state.seen_commands.entry(cmd.clone()).or_insert(0) += 1;
+    if let Some(prev) = state.history.iter().rev().nth(1).cloned() {
+        let pair = (prev, cmd.clone());
+        *state.sequence_freq.entry(pair).or_insert(0) += 1;
+    }
 
     let entry = state
         .stats
-        .entry(cmd.to_string())
+        .entry(cmd.clone())
         .or_insert(RunningStat::new());
     entry.update(1.0);
 
     let mean = entry.mean;
     let std_dev = entry.std_dev();
+    let stat_score = ((1.0 - mean) / std_dev).abs();
+    let seen_count = *state.seen_commands.get(&cmd.clone()).unwrap_or(&1);
+    let novelty_score = if seen_count == 1 {
+        3.0
+    } else if seen_count < 3 {
+        1.5
+    } else {
+        0.0
+    };
+    let mut sequence_score = 0.0;
 
-    let z_score = (1.0 - mean) / std_dev;
-    if z_score.abs() > 3.0 && entry.count > 5 {
+    if let Some(prev) = state.history.iter().rev().nth(1) {
+        let pair = (prev.clone(), cmd.clone());
+        let count = state.sequence_freq.get(&pair).unwrap_or(&1);
+
+        if *count == 1 {
+            sequence_score = 3.0;
+        } else if *count < 3 {
+            sequence_score = 1.5;
+        }
+    }
+    let mut temporal_score = 0.0;
+
+    if state.timestamps.len() >= 2 {
+        let last = state.timestamps[state.timestamps.len() - 1];
+        let prev = state.timestamps[state.timestamps.len() - 2];
+
+        let delta = last.duration_since(prev).as_secs_f32();
+
+        if delta < 0.5 {
+            temporal_score = 2.0; 
+        } else if delta > 5.0 {
+            temporal_score = 1.5; 
+        }
+    }
+
+    let final_score = stat_score * 1.5
+        + novelty_score
+        + sequence_score
+        + temporal_score;
+
+    if final_score > 3.0 {
+        let mut reasons = Vec::new();
+
+        if stat_score > 1.0 {
+            reasons.push("statistical".to_string());
+        }
+        if novelty_score > 0.0 {
+            reasons.push("novel".to_string());
+        }
+        if sequence_score > 0.0 {
+            reasons.push("sequence".to_string());
+        }
+        if temporal_score > 0.0 {
+            reasons.push("temporal".to_string());
+        }
+
         return Some(Alert {
-            pattern: cmd.to_string(),
-            score: z_score.abs(),
-            reasons: vec!["statistical".to_string()],
+            pattern: cmd.clone(),
+            score: final_score,
+            reasons,
         });
     }
 
     None
-}   
+    }   
 
 pub fn detect_bursts(
     temporal: &TemporalFrequency,

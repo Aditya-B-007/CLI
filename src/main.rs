@@ -5,8 +5,6 @@ mod renderer;
 mod shell;
 
 use std::{env};
-use std::fs::OpenOptions;
-use std::io::{BufRead, BufReader};
 
 use crate::engine::{
     build_temporal_frequency,
@@ -29,7 +27,7 @@ fn main() {
         "disable" => shell::disable(),
         "tune" => {
                 if args.len() < 3 {
-                    eprintln!("Usage: argus tune <level>");
+                    eprintln!("Usage: kautliya tune <level>");
                     return;
                 }
                 let level: f32 = args[2].parse().expect("Invalid sensitivity level. Please provide a number.");
@@ -66,30 +64,41 @@ fn main() {
         "daemon" => {
             use std::io::{self, BufRead};
 
-            println!("🚀 Argus daemon started");
+            println!("🚀 kautliya daemon started");
 
-            let stdin = io::stdin();
+            let _stdin = io::stdin();
 
             let baseline = storage::load_baseline();
             let mut state = engine::EngineState::new();
 
+            use std::sync::mpsc;
+            use std::thread;
+            let (tx, rx) = mpsc::channel::<String>();
+            let producer = thread::spawn(move || {
+            let stdin = std::io::stdin();
             for line in stdin.lock().lines() {
-                let cmd = line.unwrap();
-
-                let alert = engine::analyze_realtime_stat(
-                    &cmd,
-                    &mut state,
-                    &baseline,
-                );
-
-                renderer::render_stream(&cmd, alert);
+            if let Ok(cmd) = line {
+                tx.send(cmd).unwrap();
             }
+            }
+        });
+            for cmd in rx {
+                let alert = engine::analyze_realtime_stat(
+                &cmd,
+                &mut state,
+                &baseline,
+            );
+
+        renderer::render_stream(&cmd, alert);
         }
+
+        producer.join().unwrap();
+    }
         
         "stream" => {
             use std::io::{self, BufRead};
 
-            println!("📡 Argus live mode started");
+            println!("📡 kautliya live mode started");
 
             let stdin = io::stdin();
 
@@ -109,39 +118,55 @@ fn main() {
             }
         }
         "pipe-listen" => {
-            println!("👂 Argus listening on named pipe: \\\\.\\pipe\\argus");
+            use std::io::{BufRead, BufReader, Write};
+            use std::net::TcpListener;
+
+            println!("🚀 kautliya daemon (TCP) running on 127.0.0.1:7878");
+
+            let listener = TcpListener::bind("127.0.0.1:7878").unwrap();
 
             let baseline = storage::load_baseline();
             let mut state = engine::EngineState::new();
-            let pipe_path = r"\\.\pipe\argus";
 
-            loop {
-                let file = OpenOptions::new().read(true).open(pipe_path);
+            for stream in listener.incoming() {
+            match stream {
+                Ok(stream) => {
+                    println!("🔗 Client connected");
 
-                if let Ok(f) = file {
-                    println!("🔗 Client connected to pipe.");
-                    let reader = BufReader::new(f);
+                    let mut reader = BufReader::new(stream.try_clone().unwrap());
+                    let mut writer = stream;
 
-                    for line_result in reader.lines() {
-                        match line_result {
-                            Ok(cmd) => {
-                                let alert = engine::analyze_realtime_stat(&cmd, &mut state, &baseline);
-                                renderer::render_stream(&cmd, alert);
-                            },
-                            Err(e) => {
-                                eprintln!("Error reading from pipe: {}", e);
-                                break; // Break from inner loop to re-attempt pipe connection
-                            }
+                    loop {
+                        let mut cmd = String::new();
+
+                        if reader.read_line(&mut cmd).unwrap() == 0 {
+                            break;
                         }
+
+                        let cmd = cmd.trim();
+
+                        let alert = engine::analyze_realtime_stat(
+                            cmd,
+                            &mut state,
+                            &baseline,
+                        );
+
+                        let output = match alert {
+                            Some(a) => format!("🚨 {} | {:.2} | {:?}\n", cmd, a.score, a.reasons),
+                            None => format!("✔ {}\n", cmd),
+                        };
+
+                        writer.write_all(output.as_bytes()).unwrap();
                     }
-                    println!("🔌 Client disconnected from pipe.");
-                } else {
-                    eprintln!("Error opening named pipe (will retry): {:?}", file.err());
-                    // Small delay before retrying to avoid busy-waiting
-                    std::thread::sleep(std::time::Duration::from_secs(1));
+
+                    println!("🔌 Client disconnected");
+                }
+                Err(e) => {
+                    eprintln!("Connection failed: {}", e);
                 }
             }
         }
+    }
         "check" => {
             let log_path = &args[2];
             let file_size = parser::get_file_size(log_path);
