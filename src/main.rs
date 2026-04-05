@@ -27,7 +27,7 @@ fn main() {
         "disable" => shell::disable(),
         "tune" => {
                 if args.len() < 3 {
-                    eprintln!("Usage: kautliya tune <level>");
+                    eprintln!("Usage: kautilya tune <level>");
                     return;
                 }
                 let level: f32 = args[2].parse().expect("Invalid sensitivity level. Please provide a number.");
@@ -64,7 +64,7 @@ fn main() {
         "daemon" => {
             use std::io::{self, BufRead};
 
-            println!("🚀 kautliya daemon started");
+            println!("🚀 kautilya daemon started");
 
             let _stdin = io::stdin();
 
@@ -98,7 +98,7 @@ fn main() {
         "stream" => {
             use std::io::{self, BufRead};
 
-            println!("📡 kautliya live mode started");
+            println!("📡 kautilya live mode started");
 
             let stdin = io::stdin();
 
@@ -117,11 +117,37 @@ fn main() {
                 renderer::render_stream(&cmd, alert);
             }
         }
+        "send" => {
+            use std::io::Write;
+            use std::net::TcpStream;
+
+            if args.len() < 3 {
+                eprintln!("Usage: kautilya send <command>");
+                return;
+            }
+
+            let cmd = args[2..].join(" ");
+
+            match TcpStream::connect("127.0.0.1:7878") {
+            Ok(mut stream) => {
+                stream.write_all(format!("{}\n", cmd).as_bytes()).unwrap();
+
+                let mut response = String::new();
+                use std::io::Read;
+                stream.read_to_string(&mut response).unwrap();
+
+                print!("{}", response);
+            }
+            Err(_) => {
+                eprintln!("❌ Daemon not running. Start with: kautilya pipe-listen");
+            }
+        }
+    }
         "pipe-listen" => {
             use std::io::{BufRead, BufReader, Write};
             use std::net::TcpListener;
 
-            println!("🚀 kautliya daemon (TCP) running on 127.0.0.1:7878");
+            println!("🚀 kautilya daemon (TCP) running on 127.0.0.1:7878");
 
             let listener = TcpListener::bind("127.0.0.1:7878").unwrap();
 

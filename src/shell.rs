@@ -2,8 +2,8 @@ use std::env;
 use std::fs;
 use std::path::Path;
 
-const START: &str = "# >>> kautliya hook >>>";
-const END: &str = "# <<< kautliya hook <<<";
+const START: &str = "# >>> kautilya hook >>>";
+const END: &str = "# <<< kautilya hook <<<";
 
 pub fn enable() {
     let rc_path = get_rc_path();
@@ -12,12 +12,12 @@ pub fn enable() {
         fs::read_to_string(&rc_path).unwrap_or_default()
     } else {
         // Minimal safe default
-        String::from("# kautliya generated shell config\n")
+        String::from("# kautilya generated shell config\n")
     };
 
     // Prevent duplication
     if content.contains(START) {
-        println!("kautliya already enabled.");
+        println!("kautilya already enabled.");
         return;
     }
 
@@ -28,7 +28,7 @@ pub fn enable() {
 
     fs::write(&rc_path, content).expect("Failed to write rc file");
 
-    println!("kautliya enabled.");
+    println!("kautilya enabled.");
     println!("Run: source {}", rc_path);
 }
 
@@ -46,7 +46,7 @@ pub fn disable() {
 
     fs::write(&rc_path, cleaned).expect("Failed to update rc file");
 
-    println!("kautliya disabled.");
+    println!("kautilya disabled.");
 }
 
 fn get_rc_path() -> String {
@@ -85,35 +85,35 @@ fn build_hook() -> String {
     format!(
 r#"{start}
 
-kautliya_BIN="kautliya"
-kautliya_LOGS="$HOME/.kautliya/logs.txt"
+kautilya_BIN="kautilya"
+kautilya_LOGS="$HOME/.kautilya/logs.txt"
 
-_kautliya_init() {{
-    if [ -z "$kautliya_INITIALIZED" ]; then
-        $kautliya_BIN banner
-        export kautliya_INITIALIZED=1
+_kautilya_init() {{
+    if [ -z "$kautilya_INITIALIZED" ]; then
+        $kautilya_BIN banner
+        export kautilya_INITIALIZED=1
     fi
 }}
 
-_kautliya_run() {{
-    if [ -n "$kautliya_RUNNING" ]; then
+_kautilya_run() {{
+    if [ -n "$kautilya_RUNNING" ]; then
         return
     fi
 
-    export kautliya_RUNNING=1
+    export kautilya_RUNNING=1
 
     cmd=$(history 1 | sed 's/^ *[0-9]* *//')
 
-    echo "$cmd" | nc 127.0.0.1 7878
+    kautilya send "$cmd"
 
-    unset kautliya_RUNNING
-}}
+    unset kautilya_RUNNING
+    }}
 
 if [ -n "$ZSH_VERSION" ]; then
-    precmd_functions+=(_kautliya_init)
-    precmd_functions+=(_kautliya_run)
+    precmd_functions+=(_kautilya_init)
+    precmd_functions+=(_kautilya_run)
 elif [ -n "$BASH_VERSION" ]; then
-    PROMPT_COMMAND="_kautliya_init; _kautliya_run"
+    PROMPT_COMMAND="_kautilya_init; _kautilya_run"
 fi
 
 {end}

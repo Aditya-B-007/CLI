@@ -1,4 +1,4 @@
-Kautliya
+kautilya
 
 A terminal-native, user-specific log intelligence tool that learns normal system behavior and flags anomalies in real time using deterministic rules.
 Developers constantly deal with logs, but: 
