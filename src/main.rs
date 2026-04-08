@@ -118,31 +118,25 @@ fn main() {
             }
         }
         "send" => {
-            use std::io::Write;
+            use std::io::{Read, Write};
             use std::net::TcpStream;
-
-            if args.len() < 3 {
-                eprintln!("Usage: kautilya send <command>");
-                return;
-            }
 
             let cmd = args[2..].join(" ");
 
             match TcpStream::connect("127.0.0.1:7878") {
-            Ok(mut stream) => {
-                stream.write_all(format!("{}\n", cmd).as_bytes()).unwrap();
+                Ok(mut stream) => {
+                    stream.write_all(format!("{}\n", cmd).as_bytes()).unwrap();
 
-                let mut response = String::new();
-                use std::io::Read;
-                stream.read_to_string(&mut response).unwrap();
+                    let mut response = String::new();
+                    stream.read_to_string(&mut response).unwrap();
 
-                print!("{}", response);
+                    print!("{}", response);
+                        }
+                        Err(_) => {
+                        eprintln!("❌ Daemon not running. Start with: kautilya pipe-listen");
+                        }
+                    }
             }
-            Err(_) => {
-                eprintln!("❌ Daemon not running. Start with: kautilya pipe-listen");
-            }
-        }
-    }
         "pipe-listen" => {
             use std::io::{BufRead, BufReader, Write};
             use std::net::TcpListener;
@@ -165,9 +159,11 @@ fn main() {
                     loop {
                         let mut cmd = String::new();
 
-                        if reader.read_line(&mut cmd).unwrap() == 0 {
-                            break;
-                        }
+                        match reader.read_line(&mut cmd) {
+                            Ok(0) => break,   
+                            Ok(_) => {}   
+                            Err(_) => break,
+                            }
 
                         let cmd = cmd.trim();
 
