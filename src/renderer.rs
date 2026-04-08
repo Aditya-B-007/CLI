@@ -14,16 +14,19 @@ pub fn render_stream(cmd: &str, alert: Option<Alert>) {
         }
     }
 }
+
 pub fn animate_line() {
-    let frames = vec!["⠁", "⠂", "⠄", "⠂"];
+    let frames = ["⠁", "⠂", "⠄", "⠂"];
 
     for frame in frames {
-        print!("\r{} Analyzing...", frame);
-        std::io::Write::flush(&mut std::io::stdout()).unwrap();
-        thread::sleep(time::Duration::from_millis(200));
+        print!("\r{} analyzing...", frame);
+        use std::io::Write;
+        std::io::stdout().flush().unwrap();
+
+        thread::sleep(time::Duration::from_millis(80));
     }
 
-    println!("\r✅ Done           ");
+    print!("\r                 \r"); // clear line
 }
 pub fn print_alerts(alerts: &Vec<Alert>) {
     if alerts.is_empty() { return; }

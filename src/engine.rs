@@ -218,7 +218,7 @@ pub struct Burst {
 pub fn analyze_realtime_stat(
     cmd: &str,
     state: &mut EngineState,
-    baseline: &Baseline,
+    _baseline: &Baseline,
 ) -> Option<Alert> {
     use std::time::Instant;
     let now = Instant::now();

@@ -5,7 +5,7 @@ mod renderer;
 mod shell;
 
 use std::{env};
-
+use crate::renderer::animate_line;
 use crate::engine::{
     build_temporal_frequency,
     detect_bursts,
@@ -166,7 +166,7 @@ fn main() {
                             }
 
                         let cmd = cmd.trim();
-
+                        animate_line();
                         let alert = engine::analyze_realtime_stat(
                             cmd,
                             &mut state,
