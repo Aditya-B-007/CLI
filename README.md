@@ -84,5 +84,44 @@ Kautilya is built with modularity and performance in mind:
 
 ---
 
+### 👤 Daily Usage Guide
+
+Kautilya offers two modes of operation depending on how much feedback you want.
+
+#### Mode 1: The "Set and Forget" Daemon (Background)
+Best if you want to keep your terminal clean and only see alerts when something is actually suspicious.
+
+1.  **Start the Daemon:** In one terminal window, run:
+    ```bash
+    kautilya pipe-listen
+    ```
+2.  **Work as usual:** Open a new tab and run your daily commands.
+3.  **Silent Analysis:** Kautilya monitors everything in the background. It only alerts you (via the Daemon window) if it detects an anomaly (e.g., `🚨 cd` or a novel command).
+
+#### Mode 2: The "Live Stream" (Interactive)
+Best if you want to see exactly what Kautilya thinks of every single command you type in real-time.
+
+1.  **Start the Stream:** In your active terminal, run:
+    ```bash
+    kautilya stream
+    ```
+2.  **Immediate Feedback:** Now, as you type commands, you will get instant visual confirmation in your current window:
+    * `✔ ls` (Normal activity)
+    * `🚨 cd | score: 6.00 | ["novel", "sequence"]` (Anomaly detected)
+
+---
+
+### ⚙️ How it Works (Under the Hood)
+
+
+Kautilya uses a decoupled architecture to ensure your terminal remains fast and responsive.
+
+1.  **The Sensor (Shell Hook):** A lightweight hook in your shell configuration automatically captures every command you type.
+2.  **The Transmission:** The hook sends your command string to the background Daemon over a local TCP socket (`127.0.0.1:7878`).
+3.  **The Brain (Engine):** The Daemon receives the command, normalizes it (stripping IDs and timestamps), and runs it through a multi-signal engine to calculate a "novelty" and "statistical" score.
+4.  **The Output:** The system compares your command against your historical baseline. If the score exceeds your configured threshold, it triggers an alert.
+
+> **Note:** Because the shell hook "fires and forgets" the command, Kautilya adds **zero latency** to your terminal experience—your prompt returns immediately, regardless of how complex the analysis is.
+
 ## 📄 License
 Distributed under the **Apache License, Version 2.0**. See `LICENSE` for more information.
