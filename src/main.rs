@@ -138,58 +138,43 @@ fn main() {
                     }
             }
         "pipe-listen" => {
-            use std::io::{BufRead, BufReader, Write};
-            use std::net::TcpListener;
-
-            println!("🚀 kautilya daemon (TCP) running on 127.0.0.1:7878");
-
-            let listener = TcpListener::bind("127.0.0.1:7878").unwrap();
+            use std::net::UdpSocket;
+            use std::str;
 
             let baseline = storage::load_baseline();
             let mut state = engine::EngineState::new();
 
-            for stream in listener.incoming() {
-            match stream {
-                Ok(stream) => {
-                    println!("🔗 Client connected");
+            let socket = UdpSocket::bind("127.0.0.1:7878").expect("Failed to bind UDP socket");
+            println!("🚀 Kautilya daemon (UDP) listening on 127.0.0.1:7878");
+            let mut buf = [0; 2048]; 
 
-                    let mut reader = BufReader::new(stream.try_clone().unwrap());
-                    let mut writer = stream;
-
-                    loop {
-                        let mut cmd = String::new();
-
-                        match reader.read_line(&mut cmd) {
-                            Ok(0) => break,   
-                            Ok(_) => {}   
-                            Err(_) => break,
+            loop {
+                match socket.recv_from(&mut buf) {
+                    Ok((size, _src_addr)) => {
+                        if let Ok(cmd_str) = str::from_utf8(&buf[..size]) {
+                            let clean_cmd = cmd_str.trim();
+                            
+                            if !clean_cmd.is_empty() {
+                                animate_line();
+                                let alert = engine::analyze_realtime_stat(
+                                    clean_cmd,
+                                    &mut state,
+                                    &baseline,
+                                );
+                                
+                                if let Some(a) = alert {
+                                    println!("🚨 {} | {:.2} | {:?}", clean_cmd, a.score, a.reasons);
+                                }
                             }
-
-                        let cmd = cmd.trim();
-                        animate_line();
-                        let alert = engine::analyze_realtime_stat(
-                            cmd,
-                            &mut state,
-                            &baseline,
-                        );
-
-                        let output = match alert {
-                            Some(a) => format!("🚨 {} | {:.2} | {:?}\n", cmd, a.score, a.reasons),
-                            None => format!("✔ {}\n", cmd),
-                        };
-
-                        writer.write_all(output.as_bytes()).unwrap();
+                        }
                     }
-
-                    println!("🔌 Client disconnected");
-                }
-                Err(e) => {
-                    eprintln!("Connection failed: {}", e);
+                    Err(e) => {
+                        eprintln!("Error receiving UDP packet: {}", e);
+                    }
                 }
             }
         }
-    }
-        "check" => {
+       "check" => {
             let log_path = &args[2];
             let file_size = parser::get_file_size(log_path);
             let mut offset = storage::load_offset();
