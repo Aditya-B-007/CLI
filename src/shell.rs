@@ -99,15 +99,23 @@ _kautilya_run() {{
     if [ -n "$kautilya_RUNNING" ]; then
         return
     fi
-
+    
     export kautilya_RUNNING=1
 
-    cmd=$(history 1 | sed 's/^ *[0-9]* *//')
+    # Safely capture the last command based on the active shell
+    if [ -n "$ZSH_VERSION" ]; then
+        cmd=$(fc -ln -1 | sed 's/^[ \t]*//')
+    else
+        cmd=$(history 1 | sed 's/^ *[0-9]* *//')
+    fi
 
-    kautilya send "$cmd"
+    # Only send if the command is not empty
+    if [ -n "$cmd" ]; then
+        $kautilya_BIN send "$cmd"
+    fi
 
     unset kautilya_RUNNING
-    }}
+}}
 
 if [ -n "$ZSH_VERSION" ]; then
     precmd_functions+=(_kautilya_init)
